@@ -17,13 +17,13 @@ const db = new sqlite3.Database("./db.sqlite");
     crawlerConfigs.forEach(async crawler => {
       console.log("crawler", crawler);
 
-      switch (crawler.code) {
-        case "dstock.vndirect.com.vn":
+      switch (crawler.page) {
+        case "https://dstock.vndirect.com.vn":
           if (crawler.schedule) {
             console.log(`crawl schedule at ${crawler.scheduleExpressions}`);
-            nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirect(crawler));
+            nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirects(crawler));
           } else {
-            await crawlDstockVndirect(crawler);
+            await crawlDstockVndirects(crawler);
           }
           break;
 
@@ -38,7 +38,25 @@ const db = new sqlite3.Database("./db.sqlite");
   }
 })();
 
-async function crawlDstockVndirect(crawler) {
+async function crawlDstockVndirects(crawler) {
+  let urls = [];
+  if (crawler.codes && crawler.codes.length > 0) {
+    crawler.codes.forEach((param, i) => {
+      let url = crawler.pageRegex;
+      url = url.replace("{1}", param);
+      urls.push(url);
+    })
+  }
+
+  if (urls.length > 0) {
+    urls.forEach(async url => {
+      await crawlDstockVndirect(crawler, url);
+    }
+    );
+  }
+}
+
+async function crawlDstockVndirect(crawler, url) {
   try {
     console.log("Open browser");
 
@@ -49,7 +67,7 @@ async function crawlDstockVndirect(crawler) {
       },
     });
 
-    console.log(`Scraping page ${crawler.url}`);
+    console.log(`Scraping page ${url}`);
 
     const page = await browser.newPage();
     await page.setUserAgent(
@@ -59,7 +77,7 @@ async function crawlDstockVndirect(crawler) {
     const waitSelector = ".drating-box__main";
     const selector = ".drating-box__main table tr td";
 
-    await page.goto(crawler.url);
+    await page.goto(url);
     await page.waitForSelector(waitSelector, {
       visible: true,
       timeout: 5000,
@@ -80,7 +98,7 @@ async function crawlDstockVndirect(crawler) {
     console.log("Closing browser");
 
     await browser.close();
-    
+
   } catch (error) {
     console.log(error);
   }
