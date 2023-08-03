@@ -1,0 +1,17 @@
+{
+    "server": {
+        "host": "localhost",
+        "port": 0
+    },
+    "crawlers":
+    [
+        {
+            "code": "dstock.vndirect.com.vn",
+            "url": "https://dstock.vndirect.com.vn/d-rating-chuyen-sau/HPG",
+            "dataTable": "data",
+            "schedule": true,
+            "timezone": "Asia/Ho_Chi_Minh",
+            "scheduleExpressions": "00 50 16 * * *"
+        }
+    ]
+}
