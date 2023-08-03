@@ -20,9 +20,9 @@ const db = new sqlite3.Database("./db.sqlite");
       switch (crawler.code) {
         case "dstock.vndirect.com.vn":
           if (crawler.schedule) {
+            console.log(`crawl schedule at ${crawler.scheduleExpressions}`);
             nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirect(crawler));
           } else {
-            console.log("here")
             await crawlDstockVndirect(crawler);
           }
           break;
@@ -73,14 +73,14 @@ async function crawlDstockVndirect(crawler) {
 
     var result = chunkTable(data, 4);
 
+    console.log(`data: ${result}`);
+
     await saveData(crawler, result, db);
 
     console.log("Closing browser");
 
     await browser.close();
-
-    console.log(`data: ${result}`);
-
+    
   } catch (error) {
     console.log(error);
   }

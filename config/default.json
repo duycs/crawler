@@ -11,7 +11,7 @@
             "dataTable": "data",
             "schedule": true,
             "timezone": "Asia/Ho_Chi_Minh",
-            "scheduleExpressions": "00 50 16 * * *"
+            "scheduleExpressions": "00 02 09 * * *"
         }
     ]
 }
