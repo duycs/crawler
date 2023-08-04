@@ -6,11 +6,16 @@ const config = require('config');
 const nodeCron = require("node-cron");
 
 const app = express();
-const db = new sqlite3.Database("./db.sqlite");
 const server = http.createServer(app);
 
 app.use(express.static('public'));
 server.listen(config.server.port);
+
+var totalUrlNeedCrawl = 0;
+var totalCrawlDone = 0;
+var intervalCrawl;
+var isConnectionClosed = false;
+var crawlTime = 0;
 
 (async function main() {
   try {
@@ -21,50 +26,6 @@ server.listen(config.server.port);
       return;
     }
 
-    crawlerConfigs.forEach(async crawler => {
-      console.log("crawler", crawler);
-
-      switch (crawler.page) {
-        case "https://dstock.vndirect.com.vn":
-          if (crawler.schedule) {
-            console.log(`crawl schedule at ${crawler.scheduleExpressions}`);
-            nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirects(crawler));
-          } else {
-            await crawlDstockVndirects(crawler);
-          }
-          break;
-
-        default:
-          break;
-      }
-    });
-
-    //process.exit(0);
-  } catch (err) {
-    console.log(error);
-  }
-})();
-
-async function crawlDstockVndirects(crawler) {
-  let urls = [];
-  if (crawler.codes && crawler.codes.length > 0) {
-    crawler.codes.forEach((param, i) => {
-      let url = crawler.pageRegex;
-      url = url.replace("{1}", param);
-      urls.push(url);
-    })
-  }
-
-  if (urls.length > 0) {
-    urls.forEach(async url => {
-      await crawlDstockVndirect(crawler, url);
-    }
-    );
-  }
-}
-
-async function crawlDstockVndirect(crawler, url) {
-  try {
     console.log("Open browser");
 
     const browser = await puppeteer.launch({
@@ -74,9 +35,105 @@ async function crawlDstockVndirect(crawler, url) {
       },
     });
 
-    console.log(`Scraping page ${url}`);
+    crawlerConfigs.forEach(async crawler => {
+      console.log("crawler", crawler);
 
-    const page = await browser.newPage();
+      switch (crawler.page) {
+        case "https://dstock.vndirect.com.vn":
+          if (crawler.schedule) {
+            console.log(`crawl schedule at ${crawler.scheduleExpressions}`);
+            nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirects(browser, crawler));
+          } else {
+            await crawlDstockVndirects(browser, crawler);
+          }
+          break;
+
+        default:
+          break;
+      }
+    });
+
+  } catch (err) {
+    console.log(error);
+  }
+})();
+
+async function checkCloseConnections(db, browser) {
+  try {
+    if (isConnectionClosed) {
+      intervalCrawl = null; // clean interval
+    } else if (totalUrlNeedCrawl === totalCrawlDone) {
+      isConnectionClosed = true;
+
+      console.log("close all connections");
+
+      console.log("close database connection");
+
+      await new Promise((resolve, reject) => {
+        db.close((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      //await browser.close();
+
+      // process.exit(0);
+    }
+  } catch (error) {
+    intervalCrawl = null;
+    console.log("ignore error", error);
+  }
+}
+
+function initConnection() {
+  console.log("init database connection");
+  return db = new sqlite3.Database("./db.sqlite");
+}
+
+async function crawlDstockVndirects(browser, crawler) {
+  isConnectionClosed = false;
+  crawlTime++;
+  console.log("crawl time:", crawlTime);
+
+  const db = initConnection();
+
+  try {
+    let urls = [];
+    if (crawler.codes && crawler.codes.length > 0) {
+      crawler.codes.forEach((param, i) => {
+        let url = crawler.pageRegex;
+        url = url.replace("{1}", param);
+        urls.push(url);
+      })
+    }
+
+    if (urls.length > 0) {
+      totalUrlNeedCrawl += urls.length;
+      for (let i = 0; i < urls.length; ++i) {
+        await crawlDstockVndirect(db, browser, crawler, urls[i], i);
+      }
+    }
+
+    // TODO: setup session
+    // intervalCrawl = setInterval(async function () {
+    //   await checkCloseConnections(db, browser);
+    // }, 1000);
+
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
+async function crawlDstockVndirect(db, browser, crawler, url, index) {
+  try {
+    console.log("page", index);
+
+    totalCrawlDone += 1;
+
+    let page = await browser.newPage();
+
     await page.setUserAgent(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
     );
@@ -90,41 +147,37 @@ async function crawlDstockVndirect(crawler, url) {
       timeout: 5000,
     });
 
-    const data = await page.$$eval(selector, (tds) =>
+    let data = await page.$$eval(selector, (tds) =>
       tds.map((td, index) => {
         return td.innerText;
       })
     );
 
-    var result = chunkTable(data, 4);
+    let result = chunkTable(data, 4);
 
     console.log(`data: ${result}`);
 
     await saveData(crawler, result, db);
 
-    console.log("Closing browser");
-
-    await browser.close();
+    page.close();
 
   } catch (error) {
     console.log(error);
+    totalCrawlDone += 1;
   }
 }
 
 async function saveData(crawler, result, db) {
-  db.serialize(() => {
-    db.prepare(`INSERT INTO ${crawler.dataTable} ("value", "url", "createdDate") VALUES (?, ?, ?)`)
-      .run(JSON.stringify(result), crawler.url, new Date)
-      .finalize();
-  });
-
-  // wait for db to be closed before exit
-  await new Promise((resolve, reject) => {
-    db.close((err) => {
-      if (err) reject(err);
-      else resolve();
+  try {
+    db.serialize(() => {
+      db.prepare(`INSERT INTO ${crawler.dataTable} ("value", "url", "createdDate") VALUES (?, ?, ?)`)
+        .run(JSON.stringify(result), crawler.url, new Date)
+        .finalize();
     });
-  });
+  } catch (error) {
+    console.log("save data error", error);
+    throw error;
+  }
 }
 
 function chunkTable(array, perChunk) {
