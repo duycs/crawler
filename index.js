@@ -1,9 +1,16 @@
+const http = require("http");
+const express = require('express');
 const puppeteer = require("puppeteer");
 const sqlite3 = require("sqlite3");
 const config = require('config');
 const nodeCron = require("node-cron");
 
+const app = express();
 const db = new sqlite3.Database("./db.sqlite");
+const server = http.createServer(app);
+
+app.use(express.static('public'));
+server.listen(config.server.port);
 
 (async function main() {
   try {
