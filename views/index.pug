@@ -1,0 +1,14 @@
+html(lang='en')
+  head
+    title DStock example
+    script(type='text/javascript' src='https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js')
+    script(type='text/javascript' src='utils.js')
+    script(type='text/javascript').
+      window.__DATA__ = !{JSON.stringify(data)}
+  body
+    // <div style="width: 500px;"><canvas id="dimensions"></canvas></div><br/>
+    div(style='width: 800px; height: 800px')
+      canvas#stockLineChart
+    // <script type="module" src="dimensions.js"></script>
+    script(type='text/javascript' src='sample.js')
+    //- script(type='text/javascript' src='stock.js')

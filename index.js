@@ -9,6 +9,17 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(express.static('public'));
+app.set('view engine', 'pug')
+app.use("/", async (req, res) => {
+  const db = initConnection();
+  db.all("SELECT * FROM data", [], (err, rows) => {
+    if (err) {
+      return res.status(500);
+    }
+    res.render('index', {data: rows});
+  });
+});
+
 server.listen(config.server.port);
 
 var totalUrlNeedCrawl = 0;

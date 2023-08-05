@@ -1,5 +1,3 @@
-import Chart from 'chart.js/auto'
-
 (async function () {
     const labels = Utils.months({ count: 7 });
     const data = {
