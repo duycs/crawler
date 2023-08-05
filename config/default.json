@@ -21,7 +21,7 @@
                 "VDS"
             ],
             "dataTable": "data",
-            "schedule": true,
+            "schedule": false,
             "timezone": "Asia/Ho_Chi_Minh",
             "scheduleExpressions": "*/1 * * * *"
         }

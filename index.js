@@ -16,7 +16,7 @@ app.use("/", async (req, res) => {
     if (err) {
       return res.status(500);
     }
-    res.render('index', {data: rows});
+    res.render('index', { data: rows });
   });
 });
 
@@ -51,6 +51,11 @@ var crawlTime = 0;
 
       switch (crawler.page) {
         case "https://dstock.vndirect.com.vn":
+
+          initDataToChart(crawler);
+
+          return;
+
           if (crawler.schedule) {
             console.log(`crawl schedule at ${crawler.scheduleExpressions}`);
             nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirects(browser, crawler));
@@ -68,6 +73,31 @@ var crawlTime = 0;
     console.log(err);
   }
 })();
+
+function initDataToChart(crawler) {
+  let db = initConnection();
+
+  let sql = `SELECT *, strftime('%d-%m-%Y %H:%M:%S', createdDate) FROM ${crawler.dataTable} ORDER BY createdDate`;
+
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+
+    //console.log(rows);
+    let firstValues = [];
+    for (let i = 0; i < rows.length; ++i) {
+      let value = rows[i].value;
+
+      // TODO: check get value[0]?
+      console.log(value);
+      return;
+      firstValues.push(value[0]);
+    }
+
+    console.log(firstValues);
+  });
+}
 
 async function checkCloseConnections(db, browser) {
   try {
@@ -122,7 +152,7 @@ async function crawlDstockVndirects(browser, crawler) {
     if (urls.length > 0) {
       totalUrlNeedCrawl += urls.length;
       for (let i = 0; i < urls.length; ++i) {
-        await crawlDstockVndirect(db, browser, crawler, urls[i], i);
+        await crawlDstockVndirect(db, browser, crawler, urls[i], crawler.codes[i], i);
       }
     }
 
@@ -137,7 +167,7 @@ async function crawlDstockVndirects(browser, crawler) {
   }
 }
 
-async function crawlDstockVndirect(db, browser, crawler, url, index) {
+async function crawlDstockVndirect(db, browser, crawler, url, code, index) {
   try {
     console.log("page", index);
 
@@ -168,7 +198,7 @@ async function crawlDstockVndirect(db, browser, crawler, url, index) {
 
     console.log(`data: ${result}`);
 
-    await saveData(crawler, result, db);
+    await saveData(db, crawler, url, code, result);
 
     page.close();
 
@@ -178,11 +208,11 @@ async function crawlDstockVndirect(db, browser, crawler, url, index) {
   }
 }
 
-async function saveData(crawler, result, db) {
+async function saveData(db, crawler, url, code, result) {
   try {
     db.serialize(() => {
-      db.prepare(`INSERT INTO ${crawler.dataTable} ("value", "url", "createdDate") VALUES (?, ?, ?)`)
-        .run(JSON.stringify(result), crawler.url, new Date)
+      db.prepare(`INSERT INTO ${crawler.dataTable} ("value", "url", "code", "createdDate") VALUES (?, ?, ?, ?)`)
+        .run(JSON.stringify(result), url, code, (new Date()).toISOString())
         .finalize();
     });
   } catch (error) {

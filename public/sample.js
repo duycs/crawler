@@ -31,7 +31,7 @@ const config = {
       },
       title: {
         display: true,
-        text: "Chart.js Line Chart",
+        text: "https://dstock.vndirect.com.vn",
       },
     },
   },
