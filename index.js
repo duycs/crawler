@@ -92,7 +92,10 @@ function initDataToChart(crawler) {
       // TODO: check get value[0]?
       console.log(value);
       return;
-      firstValues.push(value[0]);
+      firstValues.push({
+        code: rows[i].code,
+        value: value[0]
+      });
     }
 
     console.log(firstValues);
