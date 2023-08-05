@@ -54,7 +54,7 @@ var crawlTime = 0;
     });
 
   } catch (err) {
-    console.log(error);
+    console.log(err);
   }
 })();
 
