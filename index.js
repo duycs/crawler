@@ -87,15 +87,14 @@ function initDataToChart(crawler) {
     //console.log(rows);
     let firstValues = [];
     for (let i = 0; i < rows.length; ++i) {
-      let value = rows[i].value;
+      let value = JSON.parse(rows[i].value);
 
-      // TODO: check get value[0]?
-      console.log(value);
-      return;
       firstValues.push({
         code: rows[i].code,
-        value: value[0]
+        value: value[0][1],
+        createdDate: rows[i].createdDate
       });
+
     }
 
     console.log(firstValues);
