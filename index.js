@@ -4,6 +4,7 @@ const puppeteer = require("puppeteer");
 const sqlite3 = require("sqlite3");
 const config = require('config');
 const nodeCron = require("node-cron");
+var moment = require('moment');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,12 +12,25 @@ const server = http.createServer(app);
 app.use(express.static('public'));
 app.set('view engine', 'pug')
 app.use("/", async (req, res) => {
+  const crawlerConfigs = config.get("crawlers");
   const db = initConnection();
-  db.all("SELECT * FROM data", [], (err, rows) => {
-    if (err) {
-      return res.status(500);
+
+  crawlerConfigs.forEach(async crawler => {
+    switch (crawler.page) {
+      case "https://dstock.vndirect.com.vn":
+        let sql = `SELECT code, createdDate, value FROM (SELECT DISTINCT code, strftime('%d-%m-%Y', createdDate) as createdDate, value FROM ${crawler.dataTable}) ORDER BY createdDate`;
+        db.all(sql, [], (err, rows) => {
+          if (err) {
+            return res.status(500);
+          }
+          res.render('index', { data: initDataDstockVndirectToChart(crawler, rows) });
+        });
+
+        break;
+
+      default:
+        break;
     }
-    res.render('index', { data: rows });
   });
 });
 
@@ -51,11 +65,6 @@ var crawlTime = 0;
 
       switch (crawler.page) {
         case "https://dstock.vndirect.com.vn":
-
-          initDataToChart(crawler);
-
-          return;
-
           if (crawler.schedule) {
             console.log(`crawl schedule at ${crawler.scheduleExpressions}`);
             nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirects(browser, crawler));
@@ -74,31 +83,75 @@ var crawlTime = 0;
   }
 })();
 
-function initDataToChart(crawler) {
-  let db = initConnection();
+function initDataDstockVndirectToChart(crawler, rows) {
+  let result = [];
+  let firstValues = [];
 
-  let sql = `SELECT *, strftime('%d-%m-%Y %H:%M:%S', createdDate) FROM ${crawler.dataTable} ORDER BY createdDate`;
+  for (let i = 0; i < rows.length; ++i) {
+    let row = rows[i];
+    let value = JSON.parse(row.value);
 
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      throw err;
+    firstValues.push({
+      label: row.code,
+      data: value[0][1],
+      createdDate: row.createdDate
+    });
+
+  }
+
+  console.log(firstValues);
+
+  // loop date in month get data stock
+  let days = getDaysInMonth();
+
+  crawler.codes.forEach(code => {
+    let dataCodeByDays = {
+      label: code,
+      data: [],
+      days: []
     }
 
-    //console.log(rows);
-    let firstValues = [];
-    for (let i = 0; i < rows.length; ++i) {
-      let value = JSON.parse(rows[i].value);
+    for (let i = 0; i < days.length; ++i) {
+      let datas = firstValues.filter(v => v.label === code && v.createdDate === days[i]);
+      
+      dataCodeByDays.days.push(days[i]);
 
-      firstValues.push({
-        code: rows[i].code,
-        value: value[0][1],
-        createdDate: rows[i].createdDate
-      });
-
+      if (datas && datas.length > 0) {
+        let data = datas[0].data;
+        dataCodeByDays.data.push(data);
+      } else {
+        dataCodeByDays.data.push(0);
+      }
     }
 
-    console.log(firstValues);
+    result.push(dataCodeByDays);
+
   });
+
+  let chartData = {
+    labels: days,
+    datasets: result
+  }
+
+  console.log("chartData", chartData);
+
+  return chartData;
+}
+
+function getDaysInMonth(month, year) {
+  month = month | new Date().getMonth();
+  year = year | new Date().getFullYear();
+
+  console.log("get days of: ", month, year);
+
+  var date = moment(new Date(year, month, 1));
+  var days = [];
+  while (date.month() === month) {
+    days.push(moment(date).format('DD-MM-YYYY'));
+    date.date(date.date() + 1);
+  }
+
+  return days;
 }
 
 async function checkCloseConnections(db, browser) {

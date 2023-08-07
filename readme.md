@@ -1,8 +1,11 @@
-### environment
+### Environment
 Node > 14
 
-### run to execute:
+### Run command to execute:
 ```npm install```
 ```node index.js```
 
-### run on localhost:3000
+### Run view on localhost:3000
+
+### Config Crawlers
+config at config/default.json
