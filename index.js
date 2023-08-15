@@ -66,8 +66,14 @@ var crawlTime = 0;
       switch (crawler.page) {
         case "https://dstock.vndirect.com.vn":
           if (crawler.schedule) {
-            console.log(`crawl schedule at ${crawler.scheduleExpressions}`);
-            nodeCron.schedule(crawler.scheduleExpressions, () => crawlDstockVndirects(browser, crawler));
+            console.log(`crawl schedule at ${crawler.scheduleExpressions}, timeZone ${crawler.timezone}`);
+            let options = {
+              timezone: crawler.timezone
+            };
+            nodeCron.schedule(crawler.scheduleExpressions, 
+              () => crawlDstockVndirects(browser, crawler), 
+              options
+            );
           } else {
             await crawlDstockVndirects(browser, crawler);
           }
@@ -120,7 +126,7 @@ function initDataDstockVndirectToChart(crawler, rows) {
         let data = datas[0].data;
         dataCodeByDays.data.push(data);
       } else {
-        const rndInt = Math.floor(Math.random() * 6) + 1
+        //const rndInt = Math.floor(Math.random() * 6) + 1
         dataCodeByDays.data.push(null);
       }
     }
