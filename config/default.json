@@ -8,7 +8,6 @@
             "page": "https://dstock.vndirect.com.vn",
             "pageRegex": "https://dstock.vndirect.com.vn/d-rating-chuyen-sau/{1}",
             "codes": [
-                "HPG",
                 "VNM",
                 "AGR",
                 "CTS",
@@ -16,7 +15,6 @@
                 "HCM",
                 "FTS",
                 "SSI",
-                "VCI",
                 "TVS",
                 "VDS"
             ],

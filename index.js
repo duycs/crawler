@@ -120,7 +120,8 @@ function initDataDstockVndirectToChart(crawler, rows) {
         let data = datas[0].data;
         dataCodeByDays.data.push(data);
       } else {
-        dataCodeByDays.data.push(0);
+        const rndInt = Math.floor(Math.random() * 6) + 1
+        dataCodeByDays.data.push(null);
       }
     }
 

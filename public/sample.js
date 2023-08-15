@@ -9,7 +9,7 @@ const config = {
       },
       title: {
         display: true,
-        text: "https://dstock.vndirect.com.vn",
+        text: "Chỉ số tăng trường",
       },
     },
   },
